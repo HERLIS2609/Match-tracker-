@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b6e5f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<title>Match Tracker</title>
+<script>try{if(localStorage.getItem("match-tracker-pin"))document.write('<style id="lockcss">#lock{display:flex!important}</style>')}catch(e){}</script>
+<script>try{var t=localStorage.getItem("match-tracker-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#eef2f4; --surface:#fff; --ink:#1d2a2f; --muted:#5d6e75; --line:#d3dce0; --head:#e3ebee;
+  --accent:#0b6e5f; --accent-ink:#fff; --win:#0b6e5f; --loss:#b3261e; --draw:#8a6d00; --focus:#0b6e5f33;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){color-scheme:dark;--bg:#12191c; --surface:#192226; --ink:#e6eef0; --muted:#8fa3aa; --line:#2c3a40; --head:#222f34;
+    --accent:#3cc0a8; --accent-ink:#0b1f1b; --win:#3cc0a8; --loss:#ff8a80; --draw:#e0c050; --focus:#3cc0a833;}
+}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#12191c; --surface:#192226; --ink:#e6eef0; --muted:#8fa3aa; --line:#2c3a40; --head:#222f34;
+    --accent:#3cc0a8; --accent-ink:#0b1f1b; --win:#3cc0a8; --loss:#ff8a80; --draw:#e0c050; --focus:#3cc0a833;}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{max-width:900px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-size:1.35rem;margin:0}
+.total{text-align:right;line-height:1}
+.total b{font-size:2.6rem;display:block;color:var(--accent)}
+.total span{font-size:.85rem;color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+h2{font-size:1.05rem;margin:0 0 10px}
+.players{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.vs{color:var(--muted);font-weight:600}
+input{font:inherit;width:100%;padding:11px 12px;min-height:46px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);color:var(--ink)}
+input:focus,button:focus-visible{outline:3px solid var(--focus);border-color:var(--accent)}
+.results{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin-top:10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:8px;padding:10px 12px;min-height:46px;touch-action:manipulation;overflow-wrap:anywhere}
+button:hover{border-color:var(--accent)}
+button.win{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.sec{min-height:40px;padding:6px 12px}
+button.danger{color:var(--loss)}
+#msg{min-height:1.3em;margin:8px 0 0;font-size:.9rem;color:var(--muted)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:9px 8px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--head);font-size:.85rem}
+th:first-child,td:first-child{text-align:left;width:1%}
+td.name{text-align:left;font-weight:600;white-space:normal}
+tbody tr:last-child td{border-bottom:0}
+.w{color:var(--win);font-weight:700}.l{color:var(--loss);font-weight:700}.d{color:var(--draw);font-weight:700}
+.empty{color:var(--muted);text-align:center;padding:14px 0;margin:0}
+.hist td:first-child{width:auto}
+.x{border:0;background:transparent;color:var(--muted);min-height:36px;min-width:36px;padding:0;font-size:1.2rem}
+.x:hover{color:var(--loss)}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 14px;border-radius:10px;display:none;align-items:center;gap:12px;z-index:10}
+#toast.show{display:flex}
+#toast button{min-height:32px;padding:4px 10px;background:transparent;color:inherit;border-color:currentColor}
+.pl{display:flex;flex-direction:column;gap:8px}
+.sg{display:flex;gap:6px}
+.sg input.sc{flex:1;min-width:0;text-align:center;font-weight:700;font-size:1.3rem;-moz-appearance:textfield}
+.sg input.sc::-webkit-outer-spin-button,.sg input.sc::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.sb{width:56px;flex:none;font-size:1.5rem;font-weight:700;padding:0}
+.sb.plus{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.sug{box-shadow:0 0 0 3px var(--focus);border-color:var(--accent)}
+.theme{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px}
+.theme h2{margin:0}
+.seg{display:flex}
+.seg button{border-radius:0;min-height:40px;margin-left:-1px}
+.seg button:first-child{border-radius:8px 0 0 8px;margin-left:0}
+.seg button:last-child{border-radius:0 8px 8px 0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.add{display:flex;gap:8px;flex-wrap:wrap}
+#explabel{flex:1 1 150px;width:auto}
+#expamt{flex:0 0 110px;width:110px}
+select{font:inherit;width:100%;padding:11px 12px;min-height:46px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.cons{display:flex;align-items:center;gap:8px;margin-top:10px}
+.cons select{width:auto;min-width:130px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:6px}
+.kv div{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.kv span{display:block;color:var(--muted);font-size:.8rem}
+.kv b{font-size:1.05rem}
+h3.sub{margin:14px 0 6px;font-size:1rem}
+button.tiny{min-height:34px;padding:4px 10px;font-size:.85rem;margin-right:4px}
+#lock{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;z-index:100}
+#lock.show{display:flex}
+#lock input{max-width:240px;text-align:center;font-size:1.3rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg)}
+.chip button{border:0;border-radius:0;min-height:38px;background:transparent;padding:6px 12px}
+.chip .cx{padding:6px 12px 6px 4px;color:var(--muted)}
+.chip .cx:hover{color:var(--loss)}
+.rate{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.rate input{width:130px;text-align:center;font-weight:700}
+tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0}
+td.amt{font-weight:700}
+.dayrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:var(--bg)}
+.dayrow .info{flex:1 1 180px}
+.dayrow .info b{display:block}
+.dayrow .info span{color:var(--muted);font-size:.9rem}
+.dayview{margin-top:14px;border-top:2px solid var(--line);padding-top:12px}
+.dayview h3{margin:14px 0 6px;font-size:1rem}
+.dayview .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dayview .top h2{margin:0}
+.board{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.row .n{font-weight:600;overflow-wrap:anywhere}
+.row .n:last-child{text-align:right}
+.row .n.win{color:var(--win)}
+.row .sc2{font-size:1.4rem;font-weight:800;white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums;min-width:64px}
+.row.latest .sc2{font-size:2.2rem}
+.row.latest .n{font-size:1.1rem}
+@media (max-width:520px){
+  .app{padding:10px}
+  .players,.results{grid-template-columns:1fr}
+  .vs{text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Match Tracker</h1>
+    <div class="total"><b id="total">0</b><span>matches played</span></div>
+  </header>
+  <p id="session" class="hint"></p>
+
+  <section class="theme">
+    <h2>Appearance</h2>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-theme-btn="auto">Auto</button>
+      <button type="button" data-theme-btn="light">Light</button>
+      <button type="button" data-theme-btn="dark">Dark</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Players <span id="pcount"></span></h2>
+    <div class="add">
+      <input id="pname" placeholder="Add a player name" autocomplete="off" aria-label="New player name">
+      <button type="button" class="win" id="addP" style="flex:none">Add</button>
+    </div>
+    <p id="pmsg" class="empty" style="text-align:left;padding:6px 0 0;min-height:1.3em;font-size:.9rem"></p>
+    <div class="chips" id="plist"></div>
+  </section>
+
+  <section>
+    <h2>Record a match</h2>
+    <div class="players">
+      <div class="pl">
+        <input id="a" list="names" placeholder="Player 1" autocomplete="off" aria-label="Player 1">
+        <div class="sg">
+          <button type="button" class="sb" data-s="sa" data-d="-1" aria-label="Remove a goal from Player 1">−</button>
+          <input id="sa" class="sc" type="number" inputmode="numeric" min="0" step="1" placeholder="Goals" aria-label="Player 1 score">
+          <button type="button" class="sb plus" data-s="sa" data-d="1" aria-label="Add a goal to Player 1">+</button>
+        </div>
+      </div>
+      <span class="vs">vs</span>
+      <div class="pl">
+        <input id="b" list="names" placeholder="Player 2" autocomplete="off" aria-label="Player 2">
+        <div class="sg">
+          <button type="button" class="sb" data-s="sb" data-d="-1" aria-label="Remove a goal from Player 2">−</button>
+          <input id="sb" class="sc" type="number" inputmode="numeric" min="0" step="1" placeholder="Goals" aria-label="Player 2 score">
+          <button type="button" class="sb plus" data-s="sb" data-d="1" aria-label="Add a goal to Player 2">+</button>
+        </div>
+      </div>
+    </div>
+    <datalist id="names"></datalist>
+    <label class="cons">Console <select id="cons" aria-label="Console used"><option value="">–</option><option value="1">PS3 1</option><option value="2">PS3 2</option><option value="3">PS3 3</option><option value="4">PS3 4</option><option value="5">PS3 5</option><option value="6">PS3 6</option><option value="7">PS3 7</option><option value="8">PS3 8</option><option value="9">PS3 9</option><option value="10">PS3 10</option></select></label>
+    <p id="editbar" class="hint" style="display:none;margin-top:8px">Editing a match. Change what you need, then tap the result to save it. <button type="button" class="sec tiny" id="cancelEdit">Cancel</button></p>
+    <div class="results">
+      <button id="winA" class="win">Player 1 won</button>
+      <button id="draw">Draw</button>
+      <button id="winB" class="win">Player 2 won</button>
+    </div>
+    <p id="msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section>
+    <h2>Score board</h2>
+    <div class="board" id="board"></div>
+  </section>
+
+  <section>
+    <h2>Standings</h2>
+    <div class="scroll" id="standings"></div>
+  </section>
+
+  <section>
+    <h2>Payments</h2>
+    <label class="rate">Price per match (TSh)
+      <input id="rate" type="number" inputmode="numeric" min="0" step="50" aria-label="Price per match in TSh">
+    </label>
+    <div class="scroll" id="pay"></div>
+    <p class="empty" style="padding:8px 0 0;text-align:left">The loser of each match pays the price. A draw is added to the bill of whoever loses the next match between the same two players. Only the draws played right before that loss count; after it, the draw count starts again from zero. Tap Paid when a player pays; anything unpaid carries over when you start a new day.</p>
+  </section>
+
+  <section>
+    <h2>Expenses</h2>
+    <div class="add">
+      <input id="explabel" placeholder="What for? (e.g. electricity)" autocomplete="off" aria-label="Expense description">
+      <input id="expamt" type="number" inputmode="numeric" min="0" placeholder="TSh" aria-label="Expense amount">
+      <button type="button" class="win" id="addExp" style="flex:none">Add</button>
+    </div>
+    <p id="expmsg" class="empty" style="text-align:left;padding:6px 0 0;min-height:1.3em;font-size:.9rem"></p>
+    <div id="exps"></div>
+  </section>
+
+  <section>
+    <h2>Day summary</h2>
+    <div id="sum"></div>
+    <div class="bar" style="margin-top:10px"><button type="button" class="sec" id="copySum">Copy summary</button></div>
+    <p id="summsg" class="empty" style="text-align:left;padding:6px 0 0;min-height:1.3em;font-size:.9rem"></p>
+  </section>
+
+  <section>
+    <h2>Match history</h2>
+    <div class="scroll" id="history"></div>
+  </section>
+
+  <section>
+    <h2>Saved days</h2>
+    <div class="add">
+      <input id="daydate" type="date" aria-label="Date to save">
+      <button type="button" class="win" id="saveDay" style="flex:none">Save day</button>
+    </div>
+    <div class="bar" style="margin-top:8px"><button type="button" class="sec" id="saveNew">Save &amp; start a new day</button></div>
+    <p id="daymsg" class="empty" style="text-align:left;padding:6px 0 0;min-height:1.3em;font-size:.9rem"></p>
+    <div id="days"></div>
+    <div id="dayview"></div>
+    <div class="bar" style="margin-top:14px">
+      <button type="button" class="sec" id="backup">Backup all data</button>
+      <button type="button" class="sec" id="restore">Restore backup</button>
+      <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    </div>
+    <p class="empty" style="text-align:left;padding:8px 0 0;font-size:.9rem">Saved days stay on this device and work offline. Use Backup now and then to keep a copy outside the browser.</p>
+  </section>
+
+  <section>
+    <h2>Reports</h2>
+    <select id="repRange" aria-label="Report period">
+      <option value="week">This week (Mon–Sun)</option>
+      <option value="month">This month</option>
+      <option value="last">Last month</option>
+      <option value="all">All saved days</option>
+    </select>
+    <div id="rep" style="margin-top:10px"></div>
+    <div class="bar" style="margin-top:10px"><button type="button" class="sec" id="copyRep">Copy report</button></div>
+    <p id="repmsg" class="empty" style="text-align:left;padding:6px 0 0;min-height:1.3em;font-size:.9rem">Reports use saved days, so save each day first.</p>
+  </section>
+
+  <section>
+    <h2>Security</h2>
+    <p id="pinState" class="hint"></p>
+    <div class="add" style="margin-top:8px">
+      <input id="newPin" type="password" inputmode="numeric" maxlength="8" placeholder="New PIN (4–8 digits)" autocomplete="off" aria-label="New PIN">
+      <button type="button" class="win" id="setPin" style="flex:none">Set PIN</button>
+    </div>
+    <div class="bar" style="margin-top:8px">
+      <button type="button" class="sec" id="lockNow">Lock now</button>
+      <button type="button" class="sec danger" id="removePin">Remove PIN</button>
+    </div>
+    <p id="pinMsg" class="empty" style="text-align:left;padding:6px 0 0;min-height:1.3em;font-size:.9rem"></p>
+  </section>
+
+  <div class="bar">
+    <button class="sec" id="export">Export CSV</button>
+    <button class="sec danger" id="reset">Clear all matches</button>
+  </div>
+</div>
+<div id="lock" role="dialog" aria-modal="true" aria-label="Locked">
+  <h2>Match Tracker is locked</h2>
+  <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN" aria-label="PIN">
+  <button type="button" class="win" id="unlock" style="min-width:160px">Unlock</button>
+  <p id="lockMsg" class="empty"></p>
+</div>
+<div id="toast" role="status"><span id="toastMsg"></span><button id="undo">Undo</button></div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "match-tracker-v1";
+  var $ = function (id) { return document.getElementById(id); };
+  var matches = load();
+  var undoData = null, toastTimer;
+  var players = [];
+  try { var pd = JSON.parse(localStorage.getItem("match-tracker-players")); if (Array.isArray(pd)) players = pd.filter(function (x) { return typeof x === "string" && x.trim(); }); } catch (e) {}
+  function savePlayers() { try { localStorage.setItem("match-tracker-players", JSON.stringify(players)); } catch (e) {} }
+  var days = [];
+  try { var dd = JSON.parse(localStorage.getItem("match-tracker-days")); if (Array.isArray(dd)) days = dd.filter(function (d) { return d && d.date && Array.isArray(d.matches); }); } catch (e) {}
+  var viewId = null;
+  var paid = {}, prev = {}, expenses = [], loadedDate = null, editingId = null, pinHash = "";
+  try { var xd = JSON.parse(localStorage.getItem("match-tracker-extra")); if (xd) { paid = xd.paid || {}; prev = xd.prev || {}; expenses = Array.isArray(xd.expenses) ? xd.expenses : []; loadedDate = xd.loaded || null; } } catch (e) {}
+  try { pinHash = localStorage.getItem("match-tracker-pin") || ""; } catch (e) {}
+  function saveExtra() { try { localStorage.setItem("match-tracker-extra", JSON.stringify({ paid: paid, prev: prev, expenses: expenses, loaded: loadedDate })); } catch (e) {} }
+  var rate = 500;
+  try { var rv = parseFloat(localStorage.getItem("match-tracker-rate")); if (rv >= 0) rate = rv; } catch (e) {}
+  function money(n) { return "TSh " + Math.round(n).toLocaleString("en-US"); }
+
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY));
+      if (Array.isArray(d)) return d.filter(function (m) { return m && m.a && m.b && /^[abd]$/.test(m.r); });
+    } catch (e) {}
+    return [];
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(matches)); } catch (e) { say("Could not save on this browser."); } }
+  function say(t) { $("msg").textContent = t; }
+  function key(n) { return n.trim().toLowerCase(); }
+  function scored(m) { return typeof m.sa === "number" && typeof m.sb === "number"; }
+  function readScore(id) { var v = $(id).value.trim(); if (v === "") return null; return /^\d{1,3}$/.test(v) ? +v : false; }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+
+  function toast(msg, data) {
+    undoData = data; $("toastMsg").textContent = msg; $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $("toast").classList.remove("show"); undoData = null; }, 6000);
+  }
+  $("undo").addEventListener("click", function () {
+    if (undoData) { matches = undoData; undoData = null; save(); render(); }
+    $("toast").classList.remove("show");
+  });
+
+  function record(r) {
+    var a = $("a").value.trim().replace(/\s+/g, " "), b = $("b").value.trim().replace(/\s+/g, " ");
+    if (!a || !b) return say("Enter both player names.");
+    if (key(a) === key(b)) return say("Player 1 and Player 2 must be different.");
+    var sa = readScore("sa"), sb = readScore("sb");
+    if (sa === false || sb === false) return say("Scores must be whole numbers, 0 or more.");
+    if ((sa === null) !== (sb === null)) return say("Enter both scores, or leave both empty.");
+    if (sa !== null && ((r === "a" && sa <= sb) || (r === "b" && sb <= sa) || (r === "d" && sa !== sb)))
+      return say("The scores don't match the result you tapped.");
+    // reuse existing spelling of a known name
+    matches.forEach(function (m) { if (key(m.a) === key(a)) a = m.a; else if (key(m.b) === key(a)) a = m.b;
+                                  if (key(m.a) === key(b)) b = m.a; else if (key(m.b) === key(b)) b = m.b; });
+    players.forEach(function (n) { if (key(n) === key(a)) a = n; if (key(n) === key(b)) b = n; });
+    var cv = $("cons").value ? +$("cons").value : null;
+    if (editingId !== null) {
+      var ix = -1; matches.forEach(function (m, n) { if (m.id === editingId) ix = n; });
+      if (ix >= 0) matches[ix] = { id: editingId, a: a, b: b, r: r, sa: sa, sb: sb, c: cv, t: matches[ix].t };
+      stopEdit();
+    } else matches.push({ id: Date.now() + Math.random(), a: a, b: b, r: r, sa: sa, sb: sb, c: cv, t: Date.now() });
+    $("sa").value = ""; $("sb").value = ""; suggest();
+    save(); render();
+    say("Saved: " + (r === "d" ? a + " and " + b + " drew." : (r === "a" ? a : b) + " won."));
+  }
+  $("winA").addEventListener("click", function () { record("a"); });
+  $("winB").addEventListener("click", function () { record("b"); });
+  $("draw").addEventListener("click", function () { record("d"); });
+
+  function labels() {
+    var a = $("a").value.trim(), b = $("b").value.trim();
+    $("winA").textContent = (a || "Player 1") + " won";
+    $("winB").textContent = (b || "Player 2") + " won";
+  }
+  $("a").addEventListener("input", labels);
+  $("b").addEventListener("input", labels);
+
+  function standings(ms, ps) {
+    ms = ms || matches; ps = ps || players;
+    var map = {};
+    function get(n) { var k = key(n); return map[k] || (map[k] = { name: n, p: 0, w: 0, l: 0, d: 0, gf: 0, ga: 0 }); }
+    ps.forEach(get);
+    ms.forEach(function (m) {
+      var A = get(m.a), B = get(m.b);
+      A.p++; B.p++;
+      if (scored(m)) { A.gf += m.sa; A.ga += m.sb; B.gf += m.sb; B.ga += m.sa; }
+      if (m.r === "a") { A.w++; B.l++; } else if (m.r === "b") { B.w++; A.l++; } else { A.d++; B.d++; }
+    });
+    return Object.keys(map).map(function (k) { var s = map[k]; s.pct = s.p ? s.w / s.p : 0; return s; })
+      .sort(function (x, y) { return y.w - x.w || y.pct - x.pct || x.p - y.p || x.name.localeCompare(y.name); });
+  }
+
+  // Loser pays. A draw is carried over and added to the bill of whoever loses the next match between the same two players.
+  function payments(ms, ps) {
+    ms = ms || matches; ps = ps || players;
+    var map = {}, pend = {}, charges = {};
+    function get(n) { var k = key(n); return map[k] || (map[k] = { name: n, l: 0, d: 0 }); }
+    ps.forEach(get);
+    ms.forEach(function (m) {
+      var pk = [key(m.a), key(m.b)].sort().join("|");
+      get(m.a); get(m.b);
+      if (m.r === "d") { pend[pk] = pend[pk] || { a: m.a, b: m.b, n: 0 }; pend[pk].n++; }
+      else {
+        var loser = get(m.r === "a" ? m.b : m.a);
+        var n = pend[pk] ? pend[pk].n : 0;
+        loser.l++; loser.d += n; delete pend[pk];
+        charges[m.id] = { units: 1 + n, draws: n };
+      }
+    });
+    return { charges: charges, map: map, rows: Object.keys(map).map(function (k) { return map[k]; }),
+             pending: Object.keys(pend).map(function (k) { return pend[k]; }) };
+  }
+
+  function renderPlayers(list) {
+    $("pcount").textContent = "(" + list.length + ")";
+    var box = $("plist"); box.innerHTML = "";
+    list.slice().sort(function (x, y) { return x.name.localeCompare(y.name); }).forEach(function (s) {
+      var chip = el("span", "chip"), b = el("button", "", s.name);
+      b.type = "button"; b.title = "Use in the match form";
+      b.addEventListener("click", function () {
+        var A = $("a"), B = $("b");
+        if (key(A.value) === key(s.name) || key(B.value) === key(s.name)) return;
+        if (!A.value.trim()) A.value = s.name; else B.value = s.name;
+        labels();
+      });
+      chip.appendChild(b);
+      if (!s.p) {
+        var x = el("button", "cx", "×"); x.type = "button"; x.title = "Remove player"; x.setAttribute("aria-label", "Remove " + s.name);
+        x.addEventListener("click", function () {
+          players = players.filter(function (n) { return key(n) !== key(s.name); });
+          savePlayers(); render();
+        });
+        chip.appendChild(x);
+      }
+      box.appendChild(chip);
+    });
+    if (!list.length) box.appendChild(el("p", "empty", "No players yet. Add names above."));
+  }
+
+function ymd(t) { var d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function hm(t) { return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function firstLast() {
+    var f = Infinity, l = -Infinity;
+    matches.forEach(function (m) { if (m.t < f) f = m.t; if (m.t > l) l = m.t; });
+    return [f, l];
+  }
+  function renderSession() {
+    var n = $("session");
+    if (!matches.length) { n.textContent = "No matches yet. Everything you record is saved automatically, so you can stop and carry on later."; return; }
+    var fl = firstLast(), t = "Current day: " + fmtDate(ymd(fl[0])) + " · " + matches.length + (matches.length === 1 ? " match" : " matches") +
+      " · first at " + hm(fl[0]) + ", last at " + hm(fl[1]) + ". Saved automatically, so you can carry on any time.";
+    if (ymd(fl[0]) !== today()) t += " These matches are from an earlier date: save them as that day before starting a new one.";
+    n.textContent = t;
+  }
+
+  function render() {
+    $("total").textContent = matches.length;
+    renderSession();
+    var bd = $("board"); bd.innerHTML = "";
+    if (!matches.length) bd.appendChild(el("p", "empty", "Scores appear here after you record a match."));
+    else matches.slice(-6).reverse().forEach(function (m, i) {
+      var r = el("div", "row" + (i === 0 ? " latest" : ""));
+      r.appendChild(el("span", "n" + (m.r === "a" ? " win" : ""), m.a));
+      r.appendChild(el("span", "sc2", scored(m) ? m.sa + " – " + m.sb : (m.r === "d" ? "Draw" : "vs")));
+      r.appendChild(el("span", "n" + (m.r === "b" ? " win" : ""), m.b));
+      bd.appendChild(r);
+    });
+    var list = standings();
+    var dl = $("names"); dl.innerHTML = "";
+    list.forEach(function (s) { var o = el("option"); o.value = s.name; dl.appendChild(o); });
+    renderPlayers(list);
+    renderDays();
+    renderExpenses();
+    renderSummary();
+    renderReport();
+
+    var st = $("standings"); st.innerHTML = "";
+    if (!list.length) st.appendChild(el("p", "empty", "No matches yet. Enter two names and tap who won."));
+    else {
+      var t = el("table"), h = el("tr");
+      ["#", "Player", "Played", "Won", "Lost", "Draw", "GF", "GA", "Win %"].forEach(function (x) { h.appendChild(el("th", "", x)); });
+      var th = el("thead"); th.appendChild(h); t.appendChild(th);
+      var tb = el("tbody");
+      list.forEach(function (s, i) {
+        var tr = el("tr");
+        tr.appendChild(el("td", "", i + 1));
+        tr.appendChild(el("td", "name", s.name));
+        tr.appendChild(el("td", "", s.p));
+        tr.appendChild(el("td", "w", s.w));
+        tr.appendChild(el("td", "l", s.l));
+        tr.appendChild(el("td", "d", s.d));
+        tr.appendChild(el("td", "", s.gf));
+        tr.appendChild(el("td", "", s.ga));
+        tr.appendChild(el("td", "", Math.round(s.pct * 100) + "%"));
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); st.appendChild(t);
+    }
+
+    var py = $("pay"); py.innerHTML = "";
+    var pay = payments(), PR = payRows(pay, prev, paid, rate);
+    if (!PR.length) py.appendChild(el("p", "empty", "Amounts appear here after you record a match."));
+    else {
+      var pt = el("table"), ph = el("tr"), tt = { today: 0, before: 0, paid: 0, owes: 0 };
+      ["Player", "Lost", "Draws", "Today", "Before", "Paid", "Owes", ""].forEach(function (x) { ph.appendChild(el("th", "", x)); });
+      var pth = el("thead"); pth.appendChild(ph); pt.appendChild(pth);
+      var ptb = el("tbody");
+      PR.forEach(function (r) {
+        var tr = el("tr");
+        tt.today += r.today; tt.before += r.before; tt.paid += r.paid; tt.owes += r.owes;
+        tr.appendChild(el("td", "name", r.name));
+        tr.appendChild(el("td", "", r.l)); tr.appendChild(el("td", "", r.d));
+        tr.appendChild(el("td", "", money(r.today))); tr.appendChild(el("td", "", money(r.before)));
+        tr.appendChild(el("td", "w", money(r.paid))); tr.appendChild(el("td", r.owes > 0 ? "l" : "", money(r.owes)));
+        var ac = el("td");
+        if (r.owes > 0) {
+          ac.appendChild(btn("Paid", function () { paid[r.key] = r.before + r.today; saveExtra(); render(); }, "tiny"));
+          ac.appendChild(btn("Part", function () {
+            var v = parseFloat(prompt("Amount paid by " + r.name + " (TSh)", String(r.owes)));
+            if (v > 0) { paid[r.key] = (paid[r.key] || 0) + v; saveExtra(); render(); }
+          }, "tiny"));
+        } else if (r.paid > 0) ac.appendChild(btn("Undo", function () { paid[r.key] = 0; saveExtra(); render(); }, "tiny"));
+        tr.appendChild(ac); ptb.appendChild(tr);
+      });
+      pt.appendChild(ptb);
+      var tf = el("tfoot"), fr = el("tr");
+      ["Total", "", "", money(tt.today), money(tt.before), money(tt.paid), money(tt.owes), ""].forEach(function (x, i) { fr.appendChild(el("td", i === 0 ? "name" : "", x)); });
+      tf.appendChild(fr); pt.appendChild(tf); py.appendChild(pt);
+      pay.pending.forEach(function (q) {
+        py.appendChild(el("p", "empty", q.a + " vs " + q.b + ": " + q.n + (q.n === 1 ? " draw is" : " draws are") +
+          " waiting (" + money(q.n * rate) + "). The loser of their next match pays for it too."));
+      });
+    }
+
+    var hi = $("history"); hi.innerHTML = "";
+    if (!matches.length) hi.appendChild(el("p", "empty", "Recorded matches will appear here."));
+    else {
+      var ht = el("table", "hist"), hh = el("tr");
+      ["Time", "Match", "PS3", "Winner", "Lost", "Charge", ""].forEach(function (x) { hh.appendChild(el("th", "", x)); });
+      var hd = el("thead"); hd.appendChild(hh); ht.appendChild(hd);
+      var hb = el("tbody");
+      matches.slice().reverse().forEach(function (m) {
+        var tr = el("tr"), d = new Date(m.t);
+        tr.appendChild(el("td", "", d.toLocaleDateString([], { day: "numeric", month: "short" }) + " " +
+          d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })));
+        tr.appendChild(el("td", "name", scored(m) ? m.a + " " + m.sa + "–" + m.sb + " " + m.b : m.a + " vs " + m.b));
+        tr.appendChild(el("td", "", m.c ? m.c : "–"));
+        if (m.r === "d") { var c = el("td", "d", "Draw"); c.colSpan = 2; tr.appendChild(c); }
+        else {
+          tr.appendChild(el("td", "w", m.r === "a" ? m.a : m.b));
+          tr.appendChild(el("td", "l", m.r === "a" ? m.b : m.a));
+        }
+        var ch = pay.charges[m.id];
+        tr.appendChild(el("td", ch ? "amt" : "", ch ? money(ch.units * rate) + (ch.draws ? " (loss + " + ch.draws + (ch.draws === 1 ? " draw)" : " draws)") : "") : "carried to next loss"));
+        var td = el("td"), x = el("button", "x", "×");
+        x.title = "Delete match"; x.setAttribute("aria-label", "Delete match");
+        x.addEventListener("click", function () {
+          var snap = matches.slice();
+          matches = matches.filter(function (q) { return q.id !== m.id; });
+          save(); render(); toast("Match deleted", snap);
+        });
+        var ed = el("button", "x", "✎"); ed.title = "Edit match"; ed.setAttribute("aria-label", "Edit match");
+        ed.addEventListener("click", function () { startEdit(m); });
+        td.appendChild(ed); td.appendChild(x); tr.appendChild(td); hb.appendChild(tr);
+      });
+      ht.appendChild(hb); hi.appendChild(ht);
+    }
+  }
+
+  function csv(v) { v = String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function download(text, name, type) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: type }));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function csvFor(ms, ps, rt) {
+    var rows = [["Date", "Time", "Player 1", "Player 2", "Score 1", "Score 2", "Result", "Winner", "Loser", "Console"]];
+    ms.forEach(function (m) {
+      var d = new Date(m.t), p = function (n) { return String(n).padStart(2, "0"); };
+      var win = m.r === "a" ? m.a : m.r === "b" ? m.b : "";
+      var lose = m.r === "a" ? m.b : m.r === "b" ? m.a : "";
+      rows.push([d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()), p(d.getHours()) + ":" + p(d.getMinutes()),
+        m.a, m.b, scored(m) ? m.sa : "", scored(m) ? m.sb : "", m.r === "d" ? "Draw" : "Win", win, lose, m.c || ""]);
+    });
+    rows.push([]);
+    rows.push(["Player", "Played", "Won", "Lost", "Draw", "Goals for", "Goals against", "Win %", "Amount to pay (TSh)"]);
+    var pm = payments(ms, ps).map;
+    standings(ms, ps).forEach(function (s) {
+      var q = pm[key(s.name)];
+      rows.push([s.name, s.p, s.w, s.l, s.d, s.gf, s.ga, Math.round(s.pct * 100) + "%", (q ? q.l + q.d : 0) * rt]);
+    });
+    return "\uFEFF" + rows.map(function (r) { return r.map(csv).join(","); }).join("\r\n") + "\r\n";
+  }
+  $("export").addEventListener("click", function () {
+    if (!matches.length) return say("Nothing to export yet.");
+    download(csvFor(matches, players, rate), "matches-" + today() + ".csv", "text/csv;charset=utf-8");
+  });
+
+  // ----- Saved days -----
+  function fmtDate(s) {
+    var q = String(s).split("-"), d = new Date(+q[0], +q[1] - 1, +q[2]);
+    return isNaN(d) ? s : d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  }
+  function dayMsg(t) { $("daymsg").textContent = t; }
+  function saveDays() { try { localStorage.setItem("match-tracker-days", JSON.stringify(days)); } catch (e) { dayMsg("Could not save on this browser."); } }
+  function dayRate(d) { return d.rate >= 0 ? d.rate : 500; }
+  function dayTotal(d) { var t = 0; payments(d.matches, d.players || []).rows.forEach(function (r) { t += (r.l + r.d) * dayRate(d); }); return t; }
+
+  function saveDay(startNew) {
+    if (!matches.length && !expenses.length) return dayMsg("There is nothing to save yet.");
+    var date = $("daydate").value || today(), i = -1;
+    days.forEach(function (d, n) { if (d.date === date) i = n; });
+    var snap = { id: Date.now(), date: date, savedAt: Date.now(), rate: rate,
+      matches: JSON.parse(JSON.stringify(matches)), players: players.slice(),
+      paid: JSON.parse(JSON.stringify(paid)), prev: JSON.parse(JSON.stringify(prev)), expenses: expenses.slice() };
+    if (i >= 0 && loadedDate !== date) {
+      var old = days[i], combine = false;
+      if (confirm("A day is already saved for " + fmtDate(date) + " (" + old.matches.length + " matches).\n\nOK = add your current matches to it (nothing already saved is lost).\nCancel = more options.")) combine = true;
+      else if (!confirm("Replace the saved day with only the current " + matches.length + " matches?")) return;
+      if (combine) {
+        var seen = {}, seenE = {};
+        old.matches.forEach(function (m) { seen[m.id] = 1; });
+        (old.expenses || []).forEach(function (e) { seenE[e.id] = 1; });
+        snap.matches = old.matches.concat(snap.matches.filter(function (m) { return !seen[m.id]; })).sort(function (x, y) { return x.t - y.t; });
+        snap.expenses = (old.expenses || []).concat(snap.expenses.filter(function (e) { return !seenE[e.id]; }));
+        (old.players || []).forEach(function (n) { if (!snap.players.some(function (x) { return key(x) === key(n); })) snap.players.push(n); });
+        snap.prev = old.prev || {};
+        var sum = {};
+        [old.paid || {}, paid].forEach(function (o) { Object.keys(o).forEach(function (k) { sum[k] = (sum[k] || 0) + o[k]; }); });
+        snap.paid = sum;
+      }
+    }
+    if (i >= 0) days[i] = snap; else days.push(snap);
+    saveDays();
+    if (startNew) {
+      var np = {};
+      payRows(payments(snap.matches, snap.players), snap.prev, snap.paid, snap.rate).forEach(function (r) { if (r.owes > 0) np[r.key] = { name: r.name, amt: r.owes }; });
+      matches = []; prev = np; paid = {}; expenses = []; loadedDate = null; stopEdit();
+    } else {
+      matches = JSON.parse(JSON.stringify(snap.matches)); players = snap.players.slice();
+      prev = JSON.parse(JSON.stringify(snap.prev)); paid = JSON.parse(JSON.stringify(snap.paid)); expenses = snap.expenses.slice(); loadedDate = date;
+    }
+    save(); savePlayers(); saveExtra();
+    dayMsg("Saved " + fmtDate(date) + (startNew ? ". Ready for a new day (unpaid amounts carried over)." : "."));
+    render();
+  }
+  $("saveDay").addEventListener("click", function () { saveDay(false); });
+  $("saveNew").addEventListener("click", function () { saveDay(true); });
+
+  function loadDay(d) {
+    if (matches.length && !confirm("Replace the current " + matches.length + " matches with " + fmtDate(d.date) + "? Save the current day first if you want to keep it.")) return;
+    matches = JSON.parse(JSON.stringify(d.matches));
+    prev = JSON.parse(JSON.stringify(d.prev || {})); paid = JSON.parse(JSON.stringify(d.paid || {})); expenses = (d.expenses || []).slice();
+    loadedDate = d.date; stopEdit(); saveExtra();
+    (d.players || []).forEach(function (n) { if (!players.some(function (x) { return key(x) === key(n); })) players.push(n); });
+    rate = dayRate(d);
+    try { localStorage.setItem("match-tracker-rate", String(rate)); } catch (e) {}
+    $("rate").value = rate; $("daydate").value = d.date;
+    save(); savePlayers();
+    dayMsg("Loaded " + fmtDate(d.date) + ". Tap Save day to update the saved copy.");
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function btn(label, fn, cls, aria) {
+    var b = el("button", "sec" + (cls ? " " + cls : ""), label);
+    b.type = "button"; if (aria) b.setAttribute("aria-label", aria);
+    b.addEventListener("click", fn); return b;
+  }
+
+  function renderDays() {
+    var box = $("days"); box.innerHTML = "";
+    if (!days.length) box.appendChild(el("p", "empty", "No saved days yet. Tap “Save day” at the end of the day."));
+    days.slice().sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : 0; }).forEach(function (d) {
+      var row = el("div", "dayrow"), info = el("div", "info"), n = d.matches.length;
+      info.appendChild(el("b", "", fmtDate(d.date)));
+      info.appendChild(el("span", "", n + (n === 1 ? " match" : " matches") + " · " + money(dayTotal(d)) + " to collect"));
+      row.appendChild(info);
+      row.appendChild(btn("View", function () { viewId = d.id; renderView(); $("dayview").scrollIntoView({ block: "start" }); }));
+      row.appendChild(btn("Load", function () { loadDay(d); }));
+      row.appendChild(btn("CSV", function () { download(csvFor(d.matches, d.players || [], dayRate(d)), "matches-" + d.date + ".csv", "text/csv;charset=utf-8"); }));
+      row.appendChild(btn("×", function () {
+        if (!confirm("Delete the saved day " + fmtDate(d.date) + "? This cannot be undone.")) return;
+        days = days.filter(function (x) { return x.id !== d.id; });
+        if (viewId === d.id) viewId = null;
+        saveDays(); render();
+      }, "danger", "Delete saved day"));
+      box.appendChild(row);
+    });
+    renderView();
+  }
+
+  function tbl(heads, rows) {
+    var t = el("table"), th = el("thead"), hr = el("tr"), tb = el("tbody"), w = el("div", "scroll");
+    heads.forEach(function (h) { hr.appendChild(el("th", "", h)); });
+    th.appendChild(hr); t.appendChild(th);
+    rows.forEach(function (r) {
+      var tr = el("tr");
+      r.forEach(function (c, i) { tr.appendChild(el("td", i === 0 ? "name" : "", c)); });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb); w.appendChild(t); return w;
+  }
+
+  function renderView() {
+    var box = $("dayview"); box.innerHTML = ""; box.className = "";
+    var d = null; days.forEach(function (x) { if (x.id === viewId) d = x; });
+    if (!d) return;
+    box.className = "dayview";
+    var ms = d.matches, ps = d.players || [], rt = dayRate(d), pay = payments(ms, ps), total = 0;
+    var top = el("div", "top"); top.appendChild(el("h2", "", fmtDate(d.date)));
+    top.appendChild(btn("Close", function () { viewId = null; renderView(); }));
+    box.appendChild(top);
+    box.appendChild(el("p", "hint", ms.length + " matches · price per match " + money(rt)));
+
+    box.appendChild(el("h3", "", "Standings"));
+    box.appendChild(tbl(["Player", "Played", "Won", "Lost", "Draw", "GF", "GA"],
+      standings(ms, ps).map(function (s) { return [s.name, s.p, s.w, s.l, s.d, s.gf, s.ga]; })));
+
+    box.appendChild(el("h3", "", "Payments"));
+    var PR = payRows(pay, d.prev || {}, d.paid || {}, rt), tv = { today: 0, before: 0, paid: 0, owes: 0 };
+    var prow = PR.map(function (r) {
+      tv.today += r.today; tv.before += r.before; tv.paid += r.paid; tv.owes += r.owes;
+      return [r.name, r.l, r.d, money(r.today), money(r.before), money(r.paid), money(r.owes)];
+    });
+    prow.push(["Total", "", "", money(tv.today), money(tv.before), money(tv.paid), money(tv.owes)]);
+    box.appendChild(tbl(["Player", "Lost", "Draws", "Today", "Before", "Paid", "Owes"], prow));
+    var exs = d.expenses || [], et = expTotal(exs);
+    box.appendChild(el("p", "hint", "Income " + money(tv.today) + " · Expenses " + money(et) + " · Profit " + money(tv.today - et)));
+    if (exs.length) box.appendChild(tbl(["Expense", "Amount"], exs.map(function (e) { return [e.label, money(e.amt)]; })));
+    pay.pending.forEach(function (q) {
+      box.appendChild(el("p", "hint", q.a + " vs " + q.b + ": " + q.n + (q.n === 1 ? " draw was" : " draws were") + " never charged (no later loss)."));
+    });
+
+    box.appendChild(el("h3", "", "Matches"));
+    box.appendChild(tbl(["Time", "Match", "PS3", "Result", "Charge"], ms.map(function (m) {
+      var t = new Date(m.t), ch = pay.charges[m.id];
+      return [t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        scored(m) ? m.a + " " + m.sa + "–" + m.sb + " " + m.b : m.a + " vs " + m.b,
+        m.c || "–",
+        m.r === "d" ? "Draw" : (m.r === "a" ? m.a : m.b) + " won",
+        ch ? money(ch.units * rt) + (ch.draws ? " (loss + " + ch.draws + (ch.draws === 1 ? " draw)" : " draws)") : "") : "carried to next loss"];
+    })));
+  }
+
+// ----- Payments helpers, summary, expenses, reports, edit, PIN -----
+  function payRows(pay, pv, pd, rt) {
+    var rows = {};
+    pay.rows.forEach(function (r) { rows[key(r.name)] = { name: r.name, l: r.l, d: r.d, today: (r.l + r.d) * rt }; });
+    Object.keys(pv).forEach(function (k) { if (!rows[k]) rows[k] = { name: pv[k].name, l: 0, d: 0, today: 0 }; });
+    return Object.keys(rows).map(function (k) {
+      var r = rows[k]; r.key = k; r.before = pv[k] ? pv[k].amt : 0; r.paid = pd[k] || 0; r.owes = Math.max(0, r.before + r.today - r.paid); return r;
+    }).sort(function (x, y) { return y.owes - x.owes || y.today - x.today || x.name.localeCompare(y.name); });
+  }
+  function hourLabel(h) { var p = function (n) { return String(n).padStart(2, "0"); }; return p(h) + ":00–" + p((h + 1) % 24) + ":00"; }
+  function expTotal(a) { var t = 0; a.forEach(function (e) { t += e.amt; }); return t; }
+  function stats(ms, ps, rt, pd, pv) {
+    var pay = payments(ms, ps), st = { matches: ms.length, due: 0, collected: 0, owed: 0, byCons: {}, byHour: {}, peak: null };
+    payRows(pay, pv || {}, pd || {}, rt).forEach(function (r) { st.due += r.today; st.collected += r.paid; st.owed += r.owes; });
+    ms.forEach(function (m) {
+      var h = new Date(m.t).getHours(), c = m.c ? "PS3 " + m.c : "No console", ch = pay.charges[m.id];
+      st.byHour[h] = (st.byHour[h] || 0) + 1;
+      var o = st.byCons[c] || (st.byCons[c] = { n: 0, inc: 0 }); o.n++; o.inc += ch ? ch.units * rt : 0;
+    });
+    Object.keys(st.byHour).forEach(function (h) { if (!st.peak || st.byHour[h] > st.peak.n) st.peak = { h: +h, n: st.byHour[h] }; });
+    return st;
+  }
+  function kv(pairs) {
+    var w = el("div", "kv");
+    pairs.forEach(function (q) { var d = el("div"); d.appendChild(el("span", "", q[0])); d.appendChild(el("b", "", q[1])); w.appendChild(d); });
+    return w;
+  }
+  function copyText(t, done) {
+    function fb() {
+      var ta = document.createElement("textarea"); ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+      ta.remove(); done(ok);
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(function () { done(true); }, fb); else fb();
+  }
+
+  function renderSummary() {
+    var box = $("sum"); box.innerHTML = "";
+    var st = stats(matches, players, rate, paid, prev), ex = expTotal(expenses);
+    box.appendChild(kv([["Matches", st.matches], ["Income", money(st.due)], ["Collected", money(st.collected)], ["Still owed", money(st.owed)],
+      ["Expenses", money(ex)], ["Profit", money(st.due - ex)], ["Busiest hour", st.peak ? hourLabel(st.peak.h) + " (" + st.peak.n + ")" : "–"]]));
+    var cr = Object.keys(st.byCons).sort().map(function (c) { return [c, st.byCons[c].n, money(st.byCons[c].inc)]; });
+    if (cr.length) { box.appendChild(el("h3", "sub", "By console")); box.appendChild(tbl(["Console", "Matches", "Income"], cr)); }
+    var hr = Object.keys(st.byHour).map(Number).sort(function (x, y) { return x - y; }).map(function (h) { return [hourLabel(h), st.byHour[h]]; });
+    if (hr.length) { box.appendChild(el("h3", "sub", "Matches per hour")); box.appendChild(tbl(["Hour", "Matches"], hr)); }
+  }
+  $("copySum").addEventListener("click", function () {
+    var st = stats(matches, players, rate, paid, prev), ex = expTotal(expenses), fl = matches.length ? ymd(firstLast()[0]) : today();
+    var L = ["Match Tracker – " + fmtDate(fl), "Matches: " + st.matches, "Income: " + money(st.due), "Collected: " + money(st.collected),
+      "Still owed: " + money(st.owed), "Expenses: " + money(ex), "Profit: " + money(st.due - ex)];
+    if (st.peak) L.push("Busiest hour: " + hourLabel(st.peak.h) + " (" + st.peak.n + " matches)");
+    Object.keys(st.byCons).sort().forEach(function (c) { L.push(c + ": " + st.byCons[c].n + " matches, " + money(st.byCons[c].inc)); });
+    copyText(L.join("\n"), function (ok) { $("summsg").textContent = ok ? "Summary copied. Paste it into WhatsApp or a message." : "Could not copy on this browser."; });
+  });
+
+  function renderExpenses() {
+    var box = $("exps"); box.innerHTML = "";
+    expenses.forEach(function (e) {
+      var row = el("div", "dayrow"), info = el("div", "info");
+      info.appendChild(el("b", "", e.label)); info.appendChild(el("span", "", money(e.amt)));
+      row.appendChild(info);
+      row.appendChild(btn("×", function () { expenses = expenses.filter(function (x) { return x.id !== e.id; }); saveExtra(); render(); }, "danger", "Delete expense"));
+      box.appendChild(row);
+    });
+    box.appendChild(el("p", expenses.length ? "hint" : "empty", expenses.length ? "Total expenses: " + money(expTotal(expenses)) : "No expenses recorded for this day."));
+  }
+  $("addExp").addEventListener("click", function () {
+    var label = $("explabel").value.trim(), amt = parseFloat($("expamt").value);
+    if (!label || !(amt >= 0)) { $("expmsg").textContent = "Enter what it was for and the amount."; return; }
+    expenses.push({ id: Date.now() + Math.random(), label: label, amt: amt });
+    $("explabel").value = ""; $("expamt").value = ""; $("expmsg").textContent = "";
+    saveExtra(); render();
+  });
+
+  function inRange(date, kind) {
+    var n = new Date();
+    if (kind === "all") return true;
+    if (kind === "month") return date.slice(0, 7) === today().slice(0, 7);
+    if (kind === "last") return date.slice(0, 7) === ymd(new Date(n.getFullYear(), n.getMonth() - 1, 1)).slice(0, 7);
+    var wd = (n.getDay() + 6) % 7;
+    return date >= ymd(new Date(n.getFullYear(), n.getMonth(), n.getDate() - wd)) && date <= ymd(new Date(n.getFullYear(), n.getMonth(), n.getDate() - wd + 6));
+  }
+  function report(kind) {
+    var R = { days: 0, matches: 0, due: 0, collected: 0, exp: 0, rows: [], players: {}, byCons: {} };
+    days.slice().sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; }).forEach(function (d) {
+      if (!inRange(d.date, kind)) return;
+      var rt = dayRate(d), st = stats(d.matches, d.players || [], rt, d.paid, d.prev), ex = expTotal(d.expenses || []);
+      R.days++; R.matches += st.matches; R.due += st.due; R.collected += st.collected; R.exp += ex;
+      R.rows.push([fmtDate(d.date), st.matches, money(st.due), money(ex), money(st.due - ex)]);
+      standings(d.matches, d.players || []).forEach(function (s) {
+        var o = R.players[key(s.name)] || (R.players[key(s.name)] = { name: s.name, w: 0, p: 0 }); o.w += s.w; o.p += s.p;
+      });
+      Object.keys(st.byCons).forEach(function (c) { var o = R.byCons[c] || (R.byCons[c] = { n: 0, inc: 0 }); o.n += st.byCons[c].n; o.inc += st.byCons[c].inc; });
+    });
+    R.top = Object.keys(R.players).map(function (k) { return R.players[k]; }).filter(function (o) { return o.p > 0; })
+      .sort(function (x, y) { return y.w - x.w || y.p - x.p || x.name.localeCompare(y.name); }).slice(0, 5);
+    return R;
+  }
+  var RANGE = { week: "This week", month: "This month", last: "Last month", all: "All saved days" };
+  function renderReport() {
+    var R = report($("repRange").value || "week"), box = $("rep"); box.innerHTML = "";
+    if (!R.days) { box.appendChild(el("p", "empty", "No saved days in this period.")); return; }
+    box.appendChild(kv([["Days", R.days], ["Matches", R.matches], ["Income", money(R.due)], ["Collected", money(R.collected)], ["Expenses", money(R.exp)], ["Profit", money(R.due - R.exp)]]));
+    box.appendChild(el("h3", "sub", "Day by day")); box.appendChild(tbl(["Day", "Matches", "Income", "Expenses", "Profit"], R.rows));
+    if (R.top.length) { box.appendChild(el("h3", "sub", "Top players")); box.appendChild(tbl(["Player", "Wins", "Played"], R.top.map(function (o) { return [o.name, o.w, o.p]; }))); }
+    var cr = Object.keys(R.byCons).sort().map(function (c) { return [c, R.byCons[c].n, money(R.byCons[c].inc)]; });
+    if (cr.length) { box.appendChild(el("h3", "sub", "By console")); box.appendChild(tbl(["Console", "Matches", "Income"], cr)); }
+  }
+  $("repRange").addEventListener("change", renderReport);
+  $("copyRep").addEventListener("click", function () {
+    var k = $("repRange").value || "week", R = report(k);
+    if (!R.days) { $("repmsg").textContent = "Nothing to copy for this period."; return; }
+    var L = ["Match Tracker report – " + RANGE[k], "Days: " + R.days, "Matches: " + R.matches, "Income: " + money(R.due), "Collected: " + money(R.collected),
+      "Expenses: " + money(R.exp), "Profit: " + money(R.due - R.exp)];
+    R.top.forEach(function (o, i) { L.push((i + 1) + ". " + o.name + " – " + o.w + " wins in " + o.p + " matches"); });
+    copyText(L.join("\n"), function (ok) { $("repmsg").textContent = ok ? "Report copied." : "Could not copy on this browser."; });
+  });
+
+  function stopEdit() { editingId = null; $("editbar").style.display = "none"; }
+  function startEdit(m) {
+    editingId = m.id; $("a").value = m.a; $("b").value = m.b;
+    $("sa").value = scored(m) ? String(m.sa) : ""; $("sb").value = scored(m) ? String(m.sb) : ""; $("cons").value = m.c ? String(m.c) : "";
+    $("editbar").style.display = ""; labels(); suggest(); say("Editing: change anything, then tap the result to save.");
+    $("a").scrollIntoView({ block: "center" });
+  }
+  $("cancelEdit").addEventListener("click", function () { stopEdit(); $("sa").value = ""; $("sb").value = ""; say(""); suggest(); });
+
+  function hashPin(p) { var h = 5381, t = "mt|" + p + "|tracker"; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); }
+  var idleT;
+  function renderPin() {
+    $("pinState").textContent = pinHash ? "PIN lock is on. The app locks when opened and after 5 minutes without use." : "No PIN set. Anyone who opens this page can change or delete data.";
+  }
+  function lock() { if (!pinHash) return; $("lock").classList.add("show"); $("pinIn").value = ""; $("lockMsg").textContent = ""; }
+  function resetIdle() { clearTimeout(idleT); if (pinHash) idleT = setTimeout(lock, 5 * 60 * 1000); }
+  function tryUnlock() {
+    if (hashPin($("pinIn").value) === pinHash) {
+      $("lock").classList.remove("show");
+      var c = document.getElementById("lockcss"); if (c) c.remove();
+      $("pinIn").value = ""; $("lockMsg").textContent = ""; resetIdle();
+    } else { $("lockMsg").textContent = "Wrong PIN."; $("pinIn").value = ""; }
+  }
+  $("unlock").addEventListener("click", tryUnlock);
+  $("pinIn").addEventListener("keydown", function (e) { if (e.key === "Enter") tryUnlock(); });
+  $("lockNow").addEventListener("click", function () { if (!pinHash) { $("pinMsg").textContent = "Set a PIN first."; return; } lock(); });
+  $("setPin").addEventListener("click", function () {
+    var v = $("newPin").value.trim();
+    if (!/^\d{4,8}$/.test(v)) { $("pinMsg").textContent = "The PIN must be 4 to 8 digits."; return; }
+    pinHash = hashPin(v);
+    try { localStorage.setItem("match-tracker-pin", pinHash); } catch (e) {}
+    $("newPin").value = ""; $("pinMsg").textContent = "PIN saved. Remember it: there is no way to recover it."; renderPin(); resetIdle();
+  });
+  $("removePin").addEventListener("click", function () {
+    if (!pinHash) return;
+    if (!confirm("Remove the PIN lock?")) return;
+    pinHash = ""; try { localStorage.removeItem("match-tracker-pin"); } catch (e) {}
+    $("pinMsg").textContent = "PIN removed."; renderPin();
+  });
+  ["pointerdown", "keydown", "touchstart"].forEach(function (ev) { document.addEventListener(ev, resetIdle, true); });
+
+  // ----- Backup / restore -----
+  $("backup").addEventListener("click", function () {
+    download(JSON.stringify({ app: "match-tracker", version: 1, exported: Date.now(), matches: matches, players: players, rate: rate, days: days, paid: paid, prev: prev, expenses: expenses, loaded: loadedDate }, null, 1),
+      "match-tracker-backup-" + today() + ".json", "application/json");
+    dayMsg("Backup file downloaded. Keep it somewhere safe.");
+  });
+  $("restore").addEventListener("click", function () { $("restoreFile").click(); });
+  $("restoreFile").addEventListener("change", function () {
+    var input = this, f = input.files && input.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var d = JSON.parse(rd.result);
+        if (!d || d.app !== "match-tracker") throw new Error("bad");
+        if (!confirm("Restore this backup? It replaces all matches, players and saved days now on this device.")) return;
+        var ok = function (m) { return m && m.a && m.b && /^[abd]$/.test(m.r); };
+        matches = (d.matches || []).filter(ok);
+        players = (d.players || []).filter(function (x) { return typeof x === "string" && x.trim(); });
+        days = (d.days || []).filter(function (x) { return x && x.date && Array.isArray(x.matches); })
+          .map(function (x) { x.matches = x.matches.filter(ok); return x; });
+        rate = d.rate >= 0 ? d.rate : 500; viewId = null;
+        paid = d.paid || {}; prev = d.prev || {}; expenses = Array.isArray(d.expenses) ? d.expenses : []; loadedDate = d.loaded || null; saveExtra();
+        try { localStorage.setItem("match-tracker-rate", String(rate)); } catch (e) {}
+        $("rate").value = rate;
+        save(); savePlayers(); saveDays(); render();
+        dayMsg("Backup restored.");
+      } catch (e) { dayMsg("That file is not a Match Tracker backup."); }
+    };
+    rd.readAsText(f);
+    input.value = "";
+  });
+
+  $("reset").addEventListener("click", function () {
+    if (!matches.length) return;
+    if (confirm("Delete all " + matches.length + " recorded matches? This cannot be undone.")) {
+      matches = []; paid = {}; save(); saveExtra(); render(); say("");
+      $("toast").classList.remove("show");
+    }
+  });
+
+  $("rate").value = rate;
+  $("rate").addEventListener("input", function () {
+    var v = parseFloat($("rate").value);
+    rate = v >= 0 ? v : 0;
+    if (v >= 0) { try { localStorage.setItem("match-tracker-rate", String(v)); } catch (e) {} }
+    render();
+  });
+function suggest() {
+    ["winA", "draw", "winB"].forEach(function (i) { $(i).classList.remove("sug"); });
+    var x = readScore("sa"), y = readScore("sb");
+    if (typeof x === "number" && typeof y === "number") $(x > y ? "winA" : x < y ? "winB" : "draw").classList.add("sug");
+  }
+  $("sa").addEventListener("input", suggest);
+  $("sb").addEventListener("input", suggest);
+  Array.prototype.forEach.call(document.querySelectorAll(".sb"), function (btn) {
+    btn.addEventListener("click", function () {
+      var t = $(btn.getAttribute("data-s")), o = $(btn.getAttribute("data-s") === "sa" ? "sb" : "sa");
+      var v = parseInt(t.value, 10); if (isNaN(v)) v = 0;
+      t.value = Math.min(999, Math.max(0, v + Number(btn.getAttribute("data-d"))));
+      if (o.value.trim() === "") o.value = 0;
+      suggest();
+    });
+  });
+
+  function addPlayer() {
+    var n = $("pname").value.trim().replace(/\s+/g, " ");
+    if (!n) return;
+    var exists = standings().some(function (s) { return key(s.name) === key(n); });
+    if (exists) { $("pmsg").textContent = n + " is already in the list."; return; }
+    players.push(n); savePlayers(); $("pname").value = ""; $("pmsg").textContent = ""; render();
+  }
+  $("addP").addEventListener("click", addPlayer);
+  $("pname").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addPlayer(); } });
+
+  function applyTheme(t) {
+    t = t === "light" || t === "dark" ? t : "auto";
+    if (t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    Array.prototype.forEach.call(document.querySelectorAll("[data-theme-btn]"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-btn") === t));
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-theme-btn]"), function (b) {
+    b.addEventListener("click", function () {
+      var t = b.getAttribute("data-theme-btn");
+      try { if (t === "auto") localStorage.removeItem("match-tracker-theme"); else localStorage.setItem("match-tracker-theme", t); } catch (e) {}
+      applyTheme(t);
+    });
+  });
+  var savedTheme = "auto";
+  try { savedTheme = localStorage.getItem("match-tracker-theme") || "auto"; } catch (e) {}
+  applyTheme(savedTheme);
+
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  $("daydate").value = matches.length ? ymd(firstLast()[0]) : today();
+  render(); labels(); suggest();
+  renderPin(); if (pinHash) lock(); resetIdle();
+})();
+</script>
+<script>if("serviceWorker"in navigator&&location.protocol.indexOf("http")===0){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
+</body>
+</html>
